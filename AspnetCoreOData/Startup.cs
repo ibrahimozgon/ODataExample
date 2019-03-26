@@ -1,15 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using AspnetCoreOData.Contexts;
+using AspnetCoreOData.Models;
+using Microsoft.AspNet.OData.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace AspnetCoreOData
 {
@@ -26,11 +25,20 @@ namespace AspnetCoreOData
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+            //removed rest of code
+            //services.AddDbContext<MyDbContext>(options => { options.UseInMemoryDatabase(Guid.NewGuid().ToString()); });
+            services.AddDbContext<MyDbContext>(options =>
+            {
+                options.UseSqlServer(@"Server=localhost\SQLEXPRESS;Database=ODataTest;Trusted_Connection=True;");
+            });
+            services.AddOData();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory, MyDbContext myDbContext)
         {
+            loggerFactory.AddDebug();
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -42,7 +50,11 @@ namespace AspnetCoreOData
             }
 
             app.UseHttpsRedirection();
-            app.UseMvc();
+            app.UseMvc(routeBuilder =>
+            {
+                routeBuilder.EnableDependencyInjection();
+                routeBuilder.Expand().Filter().Select().Count().MaxTop(10).OrderBy();
+            });
         }
     }
 }
